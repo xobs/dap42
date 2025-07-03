@@ -57,7 +57,8 @@ static volatile uint8_t console_rx_buffer[CONSOLE_RX_BUFFER_SIZE];
 static volatile uint16_t console_tx_head = 0;
 static volatile uint16_t console_tx_tail = 0;
 
-static uint16_t console_rx_head = 0;
+static volatile uint16_t console_rx_head = 0;
+static volatile uint16_t console_rx_tail = 0;
 
 void console_reconfigure(uint32_t baudrate, uint32_t databits, uint32_t stopbits,
                          uint32_t parity) {
@@ -81,23 +82,9 @@ void console_reconfigure(uint32_t baudrate, uint32_t databits, uint32_t stopbits
     usart_set_stopbits(CONSOLE_USART, stopbits);
     usart_set_parity(CONSOLE_USART, parity);
     usart_set_mode(CONSOLE_USART, CONSOLE_USART_MODE);
+    usart_enable_rx_interrupt(CONSOLE_USART);
 
-    dma_channel_reset(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
-
-    // Configure RX DMA...
-    dma_set_peripheral_address(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL, (uint32_t)&USART_RDR(CONSOLE_USART));
-    dma_set_memory_address(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL, (uint32_t)console_rx_buffer);
-    dma_set_number_of_data(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL, CONSOLE_RX_BUFFER_SIZE);
-    dma_set_read_from_peripheral(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
-    dma_enable_memory_increment_mode(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
-    dma_set_peripheral_size(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL, DMA_CCR_PSIZE_8BIT);
-    dma_set_memory_size(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL, DMA_CCR_MSIZE_8BIT);
-    dma_set_priority(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL, DMA_CCR_PL_HIGH);
-    dma_enable_circular_mode(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
-
-    dma_enable_channel(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
-
-    usart_enable_rx_dma(CONSOLE_USART);
+    // usart_enable_rx_dma(CONSOLE_USART);
     nvic_enable_irq(CONSOLE_USART_NVIC_LINE);
 
     // Re-enable the UART with the new settings
@@ -132,24 +119,8 @@ size_t console_send_buffer_space(void) {
     return CONSOLE_TX_BUFFER_SIZE - (uint16_t)(console_tx_tail - console_tx_head);
 }
 
-static bool console_rx_buffer_empty(void) {
-    if (DMA_CCR(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL) & DMA_CCR_EN) {
-        uint16_t console_rx_tail = (CONSOLE_RX_BUFFER_SIZE - DMA_CNDTR(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL)) % CONSOLE_RX_BUFFER_SIZE;
-        return console_rx_tail == console_rx_head;
-    } else {
-        return true;
-    }
-}
-
-static uint8_t console_rx_buffer_get(void) {
-    uint8_t data = console_rx_buffer[console_rx_head];
-    console_rx_head = (console_rx_head + 1) % CONSOLE_RX_BUFFER_SIZE;
-    return data;
-}
-
 void console_rx_buffer_clear(void) {
     console_rx_head = 0;
-    dma_disable_channel(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
 }
 
 size_t console_send_buffered(const uint8_t* data, size_t num_bytes) {
@@ -168,30 +139,9 @@ size_t console_send_buffered(const uint8_t* data, size_t num_bytes) {
 
 size_t console_recv_buffered(uint8_t* data, size_t max_bytes) {
     size_t bytes_read = 0;
-    if (max_bytes == 1) {
-        if (!console_rx_buffer_empty()) {
-            *data = console_rx_buffer_get();
-            bytes_read = 1;
-        }
-    } else if (!console_rx_buffer_empty()) {
-        uint16_t console_rx_tail = (CONSOLE_RX_BUFFER_SIZE - DMA_CNDTR(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL)) % CONSOLE_RX_BUFFER_SIZE;
-        if (console_rx_head > console_rx_tail) {
-            while (console_rx_head < CONSOLE_RX_BUFFER_SIZE && bytes_read < max_bytes) {
-                data[bytes_read++] = console_rx_buffer[console_rx_head++];
-            }
-            if (console_rx_head == CONSOLE_RX_BUFFER_SIZE) {
-                console_rx_head = 0;
-            }
-        }
-
-        if ((bytes_read < max_bytes) && (console_rx_head < console_rx_tail)) {
-            while (console_rx_head < console_rx_tail && bytes_read < max_bytes) {
-                data[bytes_read++] = console_rx_buffer[console_rx_head++];
-            }
-            if (console_rx_head == CONSOLE_RX_BUFFER_SIZE) {
-                console_rx_head = 0;
-            }
-        }
+    while ((bytes_read < max_bytes) && (console_rx_head != console_rx_tail)) {
+        data[bytes_read++] = console_rx_buffer[console_rx_head++];
+        console_rx_head %= CONSOLE_RX_BUFFER_SIZE;
     }
 
     return bytes_read;
@@ -213,5 +163,9 @@ void CONSOLE_USART_IRQ_NAME(void) {
         } else {
             usart_disable_tx_interrupt(CONSOLE_USART);
         }
+    }
+    if (usart_get_flag(CONSOLE_USART, USART_FLAG_RXNE)) {
+        console_rx_buffer[console_rx_tail++] = usart_recv(CONSOLE_USART);
+        console_rx_tail %= CONSOLE_RX_BUFFER_SIZE;
     }
 }
