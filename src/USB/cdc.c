@@ -305,9 +305,9 @@ void cdc_uart_app_setup(usbd_device* usbd_dev,
     cdc_uart_rx_callback = cdc_rx_cb;
 
     cdc_setup(usbd_dev,
-              &cdc_uart_on_host_tx,
-              NULL,
-              &cdc_uart_set_line_coding, &cdc_uart_get_line_coding);
+              cdc_uart_on_host_tx,
+              console_rx_buffer_clear,
+              cdc_uart_set_line_coding, cdc_uart_get_line_coding);
     cmp_usb_register_reset_callback(cdc_uart_app_reset);
 }
 

@@ -123,6 +123,7 @@ size_t console_send_buffer_space(void) {
 
 void console_rx_buffer_clear(void) {
     console_rx_head = 0;
+    console_rx_tail = 0;
 }
 
 size_t console_send_buffered(const uint8_t* data, size_t num_bytes) {
