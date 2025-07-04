@@ -149,14 +149,12 @@ static __inline void PIN_SWDIO_OUT (uint32_t bit)
 
 static __inline void     PIN_SWDIO_OUT_ENABLE  (void)
 {
-    
-    GPIO_MODER(SWDIO_GPIO_PORT) &= ~( (0x3 << (SWDIO_GPIO_PIN_NUM * 2)) );
-    GPIO_MODER(SWDIO_GPIO_PORT) |=  ( (0x1 << (SWDIO_GPIO_PIN_NUM * 2)) );
+    gpio_mode_setup(SWDIO_GPIO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SWDIO_GPIO_PIN);
 }
 
 static __inline void     PIN_SWDIO_OUT_DISABLE (void)
 {
-    GPIO_MODER(SWDIO_GPIO_PORT) &= ~( (0x3 << (SWDIO_GPIO_PIN_NUM * 2)) );
+    gpio_mode_setup(SWDIO_GPIO_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SWDIO_GPIO_PIN);
 }
 
 /*

@@ -44,7 +44,6 @@ void console_setup(uint32_t baudrate) {
 }
 
 void console_tx_buffer_clear(void);
-void console_rx_buffer_clear(void);
 
 #define IS_POW_OF_TWO(X) (((X) & ((X)-1)) == 0)
 _Static_assert(IS_POW_OF_TWO(CONSOLE_TX_BUFFER_SIZE),

@@ -298,6 +298,12 @@ void cdc_uart_app_reset(void) {
     cdc_clear_nak();
 }
 
+static void set_control_line_state(bool dtr, bool rts) {
+    (void)dtr;
+    (void)rts;
+    console_rx_buffer_clear();
+}
+
 void cdc_uart_app_setup(usbd_device* usbd_dev,
                    GenericCallback cdc_tx_cb,
                    GenericCallback cdc_rx_cb) {
@@ -306,7 +312,7 @@ void cdc_uart_app_setup(usbd_device* usbd_dev,
 
     cdc_setup(usbd_dev,
               cdc_uart_on_host_tx,
-              console_rx_buffer_clear,
+              set_control_line_state,
               cdc_uart_set_line_coding, cdc_uart_get_line_coding);
     cmp_usb_register_reset_callback(cdc_uart_app_reset);
 }
