@@ -31,7 +31,6 @@ extern void console_reconfigure(uint32_t baudrate, uint32_t databits,
 extern void console_send_blocking(uint8_t data);
 extern uint8_t console_recv_blocking(void);
 extern size_t console_send_buffered(const uint8_t* data, size_t num_bytes);
-extern size_t console_recv_buffered(uint8_t* data, size_t max_bytes);
 extern size_t console_send_buffer_space(void);
 
 #endif

@@ -36,7 +36,7 @@ extern void cdc_setup(usbd_device* usbd_dev,
                       SetLineCodingFunction set_line_coding_cb,
                       GetLineCodingFunction get_line_coding_cb);
 
-extern bool cdc_send_data(const uint8_t* data, size_t len);
+extern uint16_t cdc_send_data(const uint8_t* data, size_t len);
 
 extern void cdc_uart_app_setup(usbd_device* usbd_dev,
                                GenericCallback cdc_tx_cb,
@@ -45,5 +45,7 @@ extern void cdc_uart_app_setup(usbd_device* usbd_dev,
 extern bool cdc_uart_app_update(void);
 
 extern void cdc_uart_app_set_timeout(uint32_t timeout_ms);
+
+extern uint32_t cdc_start_in_transfer(const uint8_t *const packet_buffer, uint32_t tail, uint32_t head);
 
 #endif

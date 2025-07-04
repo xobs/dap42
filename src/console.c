@@ -23,6 +23,7 @@
 
 #include "console.h"
 #include "target.h"
+#include "USB/cdc.h"
 
 void console_setup(uint32_t baudrate) {
     /* Setup GPIO */
@@ -48,11 +49,13 @@ void console_rx_buffer_clear(void);
 #define IS_POW_OF_TWO(X) (((X) & ((X)-1)) == 0)
 _Static_assert(IS_POW_OF_TWO(CONSOLE_TX_BUFFER_SIZE),
                "Unmasked circular buffer size must be a power of two");
+_Static_assert(IS_POW_OF_TWO(CONSOLE_RX_BUFFER_SIZE),
+               "Unmasked circular buffer size must be a power of two");
 _Static_assert(CONSOLE_TX_BUFFER_SIZE <= UINT16_MAX/2,
                "Buffer size too big for unmasked circular buffer");
 
 static volatile uint8_t console_tx_buffer[CONSOLE_TX_BUFFER_SIZE];
-static volatile uint8_t console_rx_buffer[CONSOLE_RX_BUFFER_SIZE];
+static uint8_t console_rx_buffer[CONSOLE_RX_BUFFER_SIZE];
 
 static volatile uint16_t console_tx_head = 0;
 static volatile uint16_t console_tx_tail = 0;
@@ -84,7 +87,6 @@ void console_reconfigure(uint32_t baudrate, uint32_t databits, uint32_t stopbits
     usart_set_mode(CONSOLE_USART, CONSOLE_USART_MODE);
     usart_enable_rx_interrupt(CONSOLE_USART);
 
-    // usart_enable_rx_dma(CONSOLE_USART);
     nvic_enable_irq(CONSOLE_USART_NVIC_LINE);
 
     // Re-enable the UART with the new settings
@@ -137,15 +139,6 @@ size_t console_send_buffered(const uint8_t* data, size_t num_bytes) {
     return bytes_written;
 }
 
-size_t console_recv_buffered(uint8_t* data, size_t max_bytes) {
-    size_t bytes_read = 0;
-    while ((bytes_read < max_bytes) && (console_rx_head != console_rx_tail)) {
-        data[bytes_read++] = console_rx_buffer[console_rx_head++];
-        console_rx_head %= CONSOLE_RX_BUFFER_SIZE;
-    }
-
-    return bytes_read;
-}
 
 void console_send_blocking(uint8_t data) {
     usart_send_blocking(CONSOLE_USART, data);
@@ -164,8 +157,12 @@ void CONSOLE_USART_IRQ_NAME(void) {
             usart_disable_tx_interrupt(CONSOLE_USART);
         }
     }
+
     if (usart_get_flag(CONSOLE_USART, USART_FLAG_RXNE)) {
-        console_rx_buffer[console_rx_tail++] = usart_recv(CONSOLE_USART);
-        console_rx_tail %= CONSOLE_RX_BUFFER_SIZE;
+        while (usart_get_flag(CONSOLE_USART, USART_FLAG_RXNE)) {
+            console_rx_buffer[console_rx_tail++] = usart_recv(CONSOLE_USART);
+            console_rx_tail &= (CONSOLE_RX_BUFFER_SIZE-1);
+        }
+        console_rx_head = cdc_start_in_transfer(console_rx_buffer, console_rx_head, console_rx_tail);
     }
 }
