@@ -38,18 +38,22 @@ static inline void __set_MSP(uint32_t topOfMainStack)
     asm("msr msp, %0" : : "r" (topOfMainStack));
 }
 
-static void jump_to_bootloader(void) __attribute__ ((noreturn));
+void jump_to_bootloader(void) __attribute__ ((noreturn));
+void force_usb_reenumerate(void);
 
 /* Sets up and jumps to the bootloader */
-static void jump_to_bootloader(void) {
+void jump_to_bootloader(void) {
     uint32_t boot_stack_ptr = *(uint32_t*)(BOOT_ADDR);
     uint32_t dfu_reset_addr = *(uint32_t*)(BOOT_ADDR+4);
 
     void (*dfu_bootloader)(void) = (void (*))(dfu_reset_addr);
+    rcc_periph_reset_pulse(RST_USB);
 
     /* Remap vector table to system memory */
     rcc_periph_clock_enable(RCC_SYSCFG_COMP);
     SYSCFG_CFGR1 = 0x1;
+
+    force_usb_reenumerate();
 
     /* Reset the stack pointer */
     __set_MSP(boot_stack_ptr);
@@ -66,6 +70,7 @@ void DFU_reset_and_jump_to_bootloader(void) {
     } else {
         backup_write(BKP0, CMD_BOOT_WITH_NBOOT0_BIT);
     }
+    force_usb_reenumerate();
     scb_reset_system();
 }
 

@@ -20,7 +20,7 @@
 #define CONFIG_H_INCLUDED
 
 #define PRODUCT_NAME "Nanodyne"
-#define REMAP_USB 1
+#define REMAP_USB 0
 #define USB_NVIC_LINE NVIC_USB_IRQ
 #define USB_IRQ_NAME usb_isr
 

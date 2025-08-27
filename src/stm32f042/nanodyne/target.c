@@ -20,6 +20,9 @@
 #include <libopencm3/stm32/crs.h>
 #include <libopencm3/stm32/flash.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/iwdg.h>
+#include <libopencm3/usb/usbd.h>
+#include <libopencm3/stm32/st_usbfs.h>
 
 #include "target.h"
 #include "config.h"
@@ -30,6 +33,51 @@ static void writel(uint32_t address, uint32_t value) {
 
 static void writeh(uint32_t address, uint16_t value) {
     *(volatile uint16_t *)address = value;
+}
+
+void force_usb_reenumerate(void);
+void force_usb_reenumerate(void) {
+    rcc_periph_clock_enable(RCC_GPIOA);
+    /* Ensure PA10 is an input for pad escape */
+    gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO10);
+
+    rcc_periph_reset_pulse(RST_USB);
+
+    // Only perform a reset if we're running from the HSI 48 MHz clock
+    // (i.e. if the USB is configured and active).
+    if (rcc_system_clock_source() != RCC_HSI48) {
+        return;
+    }
+
+    // Wait for a given number of milliseconds with USB in a reset state
+    const unsigned int wait_ms = 10;
+    const unsigned int clock_frequency = 48;
+    const unsigned int wait_loops = clock_frequency * 1000 * wait_ms;
+    // Disconnect the USB_DP pullup resistor to simulate a disconnection
+    SET_REG(USB_BCDR_REG, 0);
+    for (unsigned int i = 0; i < wait_loops; i++) {
+        iwdg_reset();
+    }
+
+    // // Wait for a given number of milliseconds with USB in a reset state
+    // const unsigned int wait_ms = 10;
+    // unsigned int clock_frequency;
+    // if (rcc_system_clock_source() == RCC_HSI48) {
+    //     // Disconnect the USB_DP pullup resistor to simulate a disconnection
+    //     SET_REG(USB_BCDR_REG, 0);
+    //     clock_frequency = 48;
+    // } else {
+    //     SET_REG(USB_CNTR_REG, 0);
+    //     SET_REG(USB_BTABLE_REG, 0);
+    //     SET_REG(USB_ISTR_REG, 0);
+    //     SET_REG(USB_BCDR_REG, 0);
+    //     clock_frequency = 8;
+    // }
+    // const unsigned int wait_loops = clock_frequency * 1000 * wait_ms;
+    // for (unsigned int i = 0; i < wait_loops; i++) {
+    //     asm("");
+    //     iwdg_reset();
+    // }
 }
 
 /* Reconfigure processor settings */
@@ -80,8 +128,7 @@ void gpio_setup(void) {
     rcc_periph_clock_enable(RCC_GPIOB);
     rcc_periph_clock_enable(RCC_GPIOC);
 
-    /* Ensure PA10 is an input for pad escape */
-    gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO10);
+    force_usb_reenumerate();
 }
 
 void target_console_init(void) {

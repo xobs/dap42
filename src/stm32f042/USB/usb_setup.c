@@ -34,10 +34,8 @@ const usbd_driver* target_usb_init(void) {
     rcc_periph_clock_enable(RCC_SYSCFG_COMP);
     SYSCFG_CFGR1 |= SYSCFG_CFGR1_PA11_PA12_RMP;
 #endif
-    /*
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE,
-                    GPIO11 | GPIO12);
-    gpio_set_af(GPIOA, GPIO_AF2, GPIO11 | GPIO12);
-    */
+    // gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE,
+    //                 GPIO11 | GPIO12);
+    // gpio_set_af(GPIOA, GPIO_AF2, GPIO11 | GPIO12);
     return &st_usbfs_v2_usb_driver;
 }
