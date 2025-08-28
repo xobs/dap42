@@ -23,6 +23,7 @@
 #include <libopencm3/stm32/iwdg.h>
 #include <libopencm3/usb/usbd.h>
 #include <libopencm3/stm32/st_usbfs.h>
+#include <libopencm3/stm32/common/timer_common_all.h>
 
 #include "target.h"
 #include "config.h"
@@ -42,12 +43,6 @@ void force_usb_reenumerate(void) {
     gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO10);
 
     rcc_periph_reset_pulse(RST_USB);
-
-    // Only perform a reset if we're running from the HSI 48 MHz clock
-    // (i.e. if the USB is configured and active).
-    if (rcc_system_clock_source() != RCC_HSI48) {
-        return;
-    }
 
     // Wait for a given number of milliseconds with USB in a reset state
     const unsigned int wait_ms = 10;
@@ -120,6 +115,20 @@ void clock_setup(void) {
     // Trim from USB sync frame
     crs_autotrim_usb_enable();
     rcc_set_usbclk_source(RCC_HSI48);
+
+    // Divide the 48 MHz HSI48 clock by 4 and drive it out the MCO pin.
+    // Note that this does not work unless we divide it by at least 2.
+    rcc_periph_clock_enable(RCC_GPIOA);
+	gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO9);
+    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
+    gpio_set_af(GPIOA, GPIO_AF5, GPIO9);
+
+#ifndef RCC_CFGR_MCO_HSI48
+#define RCC_CFGR_MCO_HSI48 8
+#endif
+    RCC_CFGR = (RCC_CFGR & ~(RCC_CFGR_MCO_MASK << RCC_CFGR_MCO_SHIFT))
+                | (RCC_CFGR_MCO_HSI48 << RCC_CFGR_MCO_SHIFT)
+                | RCC_CFGR_MCOPRE_DIV4;
 }
 
 void gpio_setup(void) {

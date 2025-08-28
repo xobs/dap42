@@ -47,7 +47,6 @@ void jump_to_bootloader(void) {
     uint32_t dfu_reset_addr = *(uint32_t*)(BOOT_ADDR+4);
 
     void (*dfu_bootloader)(void) = (void (*))(dfu_reset_addr);
-    rcc_periph_reset_pulse(RST_USB);
 
     /* Remap vector table to system memory */
     rcc_periph_clock_enable(RCC_SYSCFG_COMP);
@@ -70,7 +69,12 @@ void DFU_reset_and_jump_to_bootloader(void) {
     } else {
         backup_write(BKP0, CMD_BOOT_WITH_NBOOT0_BIT);
     }
+
     force_usb_reenumerate();
+
+    rcc_set_sysclk_source(RCC_HSI);
+    rcc_osc_off(RCC_HSI48);
+
     scb_reset_system();
 }
 
