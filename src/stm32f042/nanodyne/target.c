@@ -41,8 +41,14 @@ void force_usb_reenumerate(void) {
     rcc_periph_clock_enable(RCC_GPIOA);
     /* Ensure PA10 is an input for pad escape */
     gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO10);
+    gpio_set_af(GPIOA, 0, GPIO10);
+    gpio_port_config_lock(GPIOA, GPIO10);
 
-    rcc_periph_reset_pulse(RST_USB);
+    // Only perform a reset if we're running from the HSI 48 MHz clock
+    // (i.e. if the USB is configured and active).
+    if (rcc_system_clock_source() != RCC_HSI48) {
+        return;
+    }
 
     // Wait for a given number of milliseconds with USB in a reset state
     const unsigned int wait_ms = 10;

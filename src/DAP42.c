@@ -139,9 +139,9 @@ int main(void) {
 
     tick_start();
 
-    /* Enable the watchdog to enable DFU recovery from bad firmware images */
-    iwdg_set_period_ms(1000);
-    iwdg_start();
+    // /* Enable the watchdog to enable DFU recovery from bad firmware images */
+    // iwdg_set_period_ms(1000);
+    // iwdg_start();
 
     /* Enable USB */
     nvic_enable_irq(USB_NVIC_LINE);
