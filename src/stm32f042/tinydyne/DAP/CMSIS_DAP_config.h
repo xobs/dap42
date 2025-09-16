@@ -95,7 +95,7 @@ This information includes:
 /// This configuration settings is used to optimize the communication performance with the
 /// debugger and depends on the USB peripheral. For devices with limited RAM or USB buffer the
 /// setting can be reduced (valid range is 1 .. 255).
-#define DAP_PACKET_COUNT        12U             ///< Specifies number of packets buffered.
+#define DAP_PACKET_COUNT        8U             ///< Specifies number of packets buffered.
 
 #define DAP_PACKET_QUEUE_SIZE (DAP_PACKET_COUNT+8)
 
@@ -180,13 +180,6 @@ static inline uint8_t DAP_GetProductString (char *str) {
 #define JTDI_GPIO_PIN           GPIO15
 #define JTDO_GPIO_PORT          GPIOB
 #define JTDO_GPIO_PIN           GPIO7
-
-#define LED_CON_GPIO_PORT       GPIOA
-#define LED_CON_GPIO_PIN        GPIO0
-#define LED_RUN_GPIO_PORT       GPIOA
-#define LED_RUN_GPIO_PIN        GPIO1
-#define LED_ACT_GPIO_PORT       GPIOA
-#define LED_ACT_GPIO_PIN        GPIO4
 
 #define SWDIO_GPIO_PIN_NUM      5
 
