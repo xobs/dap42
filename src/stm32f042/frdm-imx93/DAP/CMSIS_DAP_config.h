@@ -170,25 +170,24 @@ static inline uint8_t DAP_GetProductString (char *str) {
 
 ///@}
 
-#define SWCLK_GPIO_PORT         GPIOB
-#define SWCLK_GPIO_PIN          GPIO7
+#define SWCLK_GPIO_PORT         GPIOA
+#define SWCLK_GPIO_PIN          GPIO6
 #define SWDIO_GPIO_PORT         GPIOA
-#define SWDIO_GPIO_PIN          GPIO15
+#define SWDIO_GPIO_PIN          GPIO5
 #define nRESET_GPIO_PORT        GPIOB
-#define nRESET_GPIO_PIN         GPIO0
-#define JTDI_GPIO_PORT          GPIOC
-#define JTDI_GPIO_PIN           GPIO14
-#define JTDO_GPIO_PORT          GPIOC
-#define JTDO_GPIO_PIN           GPIO15
+#define nRESET_GPIO_PIN         GPIO1
+#define JTDI_GPIO_PORT          GPIOA
+#define JTDI_GPIO_PIN           GPIO15
+#define JTDO_GPIO_PORT          GPIOB
+#define JTDO_GPIO_PIN           GPIO7
 
-// Unconfigured
 #define LED_CON_GPIO_PORT       GPIOA
 #define LED_CON_GPIO_PIN        GPIO0
 #define LED_RUN_GPIO_PORT       GPIOA
-#define LED_RUN_GPIO_PIN        GPIO0
+#define LED_RUN_GPIO_PIN        GPIO1
 #define LED_ACT_GPIO_PORT       GPIOA
-#define LED_ACT_GPIO_PIN        GPIO0
+#define LED_ACT_GPIO_PIN        GPIO4
 
-#define SWDIO_GPIO_PIN_NUM      15
+#define SWDIO_GPIO_PIN_NUM      5
 
 #endif /* __DAP_CONFIG_H__ */

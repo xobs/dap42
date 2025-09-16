@@ -39,7 +39,7 @@ static inline void __set_MSP(uint32_t topOfMainStack)
 }
 
 void jump_to_bootloader(void) __attribute__ ((noreturn));
-void force_usb_reenumerate(void);
+// void force_usb_reenumerate(void);
 
 /* Sets up and jumps to the bootloader */
 void jump_to_bootloader(void) {
@@ -52,7 +52,7 @@ void jump_to_bootloader(void) {
     rcc_periph_clock_enable(RCC_SYSCFG_COMP);
     SYSCFG_CFGR1 = 0x1;
 
-    force_usb_reenumerate();
+    // force_usb_reenumerate();
 
     /* Reset the stack pointer */
     __set_MSP(boot_stack_ptr);
@@ -70,7 +70,7 @@ void DFU_reset_and_jump_to_bootloader(void) {
         backup_write(BKP0, CMD_BOOT_WITH_NBOOT0_BIT);
     }
 
-    force_usb_reenumerate();
+    // force_usb_reenumerate();
 
     rcc_set_sysclk_source(RCC_HSI);
     rcc_osc_off(RCC_HSI48);

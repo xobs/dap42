@@ -76,7 +76,7 @@ static __inline void PORT_SWD_SETUP (void)
     gpio_set_output_options(SWDIO_GPIO_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, SWDIO_GPIO_PIN);
     gpio_set_output_options(SWCLK_GPIO_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, SWCLK_GPIO_PIN);
 
-    gpio_mode_setup(SWDIO_GPIO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SWDIO_GPIO_PIN);
+    gpio_mode_setup(SWDIO_GPIO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, SWDIO_GPIO_PIN);
     gpio_mode_setup(SWCLK_GPIO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SWCLK_GPIO_PIN);
 
 #if defined(JTDI_GPIO_PORT) && defined(JTDI_GPIO_PIN)
@@ -149,12 +149,19 @@ static __inline void PIN_SWDIO_OUT (uint32_t bit)
 
 static __inline void     PIN_SWDIO_OUT_ENABLE  (void)
 {
-    gpio_mode_setup(SWDIO_GPIO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SWDIO_GPIO_PIN);
+
+	uint32_t moder = GPIO_MODER(SWDIO_GPIO_PORT);
+    moder &= ~GPIO_MODE_MASK(SWDIO_GPIO_PIN_NUM);
+    moder |= GPIO_MODE(SWDIO_GPIO_PIN_NUM, GPIO_MODE_OUTPUT);
+	GPIO_MODER(SWDIO_GPIO_PORT) = moder;
 }
 
 static __inline void     PIN_SWDIO_OUT_DISABLE (void)
 {
-    gpio_mode_setup(SWDIO_GPIO_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SWDIO_GPIO_PIN);
+	uint32_t moder = GPIO_MODER(SWDIO_GPIO_PORT);
+    moder &= ~GPIO_MODE_MASK(SWDIO_GPIO_PIN_NUM);
+    moder |= GPIO_MODE(SWDIO_GPIO_PIN_NUM, GPIO_MODE_INPUT);
+	GPIO_MODER(SWDIO_GPIO_PORT) = moder;
 }
 
 /*

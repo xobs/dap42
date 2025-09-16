@@ -62,6 +62,12 @@ ifeq ($(TARGET),NANODYNE)
 	LDSCRIPT           ?= ./stm32f042/stm32f042x6.ld
 	ARCH                = STM32F0
 endif
+ifeq ($(TARGET),FRDM-IMX93)
+	TARGET_COMMON_DIR  := ./stm32f042
+	TARGET_SPEC_DIR    := ./stm32f042/frdm-imx93
+	LDSCRIPT           ?= ./stm32f042/stm32f042x6.ld
+	ARCH                = STM32F0
+endif
 ifeq ($(TARGET),STM32F103)
 	TARGET_COMMON_DIR  := ./stm32f103
 	TARGET_SPEC_DIR    := ./stm32f103/stlinkv2-dongle
