@@ -181,6 +181,7 @@ bool DAP_app_update(void) {
     }
 
 #if HID_AVAILABLE
+    __disable_irq();
     if (hid_get_in_ep_idle() &&
         (outbox_head != process_head) &&
         (buffers[outbox_head].buffer_kind == BUFFER_KIND_HID_RESPONSE)) {
@@ -189,9 +190,15 @@ bool DAP_app_update(void) {
             active = true;
         }
     }
+    __enable_irq();
 #endif
 
 #if BULK_AVAILABLE
+    // If the next packet to get transmitted is a bulk response packet,
+    // and if the bulk EP is idle, try to queue a transmission.
+    // Disable interrupts to avoid having the case where a packet comes in
+    // while we try to queue a new packet.
+    __disable_irq();
     if (bulk_get_in_ep_idle() &&
         (outbox_head != process_head) &&
         (buffers[outbox_head].buffer_kind == BUFFER_KIND_BULK_RESPONSE)) {
@@ -200,6 +207,7 @@ bool DAP_app_update(void) {
             active = true;
         }
     }
+    __enable_irq();
 #endif
 
     return active;
