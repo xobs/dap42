@@ -1,0 +1,38 @@
+{
+  "files.associations": {
+    "iwdg.h": "c",
+    "compare": "cpp",
+    "cstdint": "cpp",
+    "array": "c",
+    "string": "c",
+    "string_view": "c",
+    "ranges": "c",
+    "span": "c",
+    "*.inc": "c",
+    "vector": "c",
+    "cstdlib": "c",
+    "app.h": "c",
+    "format": "c",
+    "dfu.h": "c",
+    "rcc.h": "c",
+    "string.h": "c",
+    "config.h": "c",
+    "composite_usb_conf.h": "c",
+    "cdc.h": "c",
+    "usbd.h": "c",
+    "console.h": "c",
+    "common.h": "c",
+    "stdbool.h": "c"
+  },
+  "C_Cpp.dimInactiveRegions": false,
+  "rust-analyzer.restartServerOnConfigChange": true,
+  "rust-analyzer.check.overrideCommand": [
+    "osdyne-sdk",
+    "run",
+    "cargo-osdyne",
+    "clippy",
+    "--message-format",
+    "json-diagnostic-rendered-ansi"
+  ],
+  "rust-analyzer.cargo.targetDir": true
+}
