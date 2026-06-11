@@ -79,6 +79,10 @@ static __inline void PORT_SWD_SETUP (void)
     gpio_mode_setup(SWDIO_GPIO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, SWDIO_GPIO_PIN);
     gpio_mode_setup(SWCLK_GPIO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SWCLK_GPIO_PIN);
 
+#if defined(SWDIO_DIR_GPIO_PORT) && defined(SWDIO_DIR_GPIO_PIN)
+    gpio_mode_setup(SWDIO_DIR_GPIO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SWDIO_DIR_GPIO_PIN);
+#endif
+
 #if defined(JTDI_GPIO_PORT) && defined(JTDI_GPIO_PIN)
     GPIO_BRR(JTDI_GPIO_PORT) = JTDI_GPIO_PIN;
     gpio_mode_setup(JTDI_GPIO_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, JTDI_GPIO_PIN);
@@ -96,6 +100,10 @@ static __inline void PORT_OFF (void)
     GPIO_BRR(SWCLK_GPIO_PORT) = SWCLK_GPIO_PIN;
     gpio_mode_setup(SWDIO_GPIO_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SWDIO_GPIO_PIN);
     gpio_mode_setup(SWCLK_GPIO_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SWCLK_GPIO_PIN);
+
+#if defined(SWDIO_DIR_GPIO_PORT) && defined(SWDIO_DIR_GPIO_PIN)
+    gpio_mode_setup(SWDIO_DIR_GPIO_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SWDIO_DIR_GPIO_PIN);
+#endif
 
 #if defined(JTDI_GPIO_PORT) && defined(JTDI_GPIO_PIN)
     GPIO_BRR(JTDI_GPIO_PORT) = JTDI_GPIO_PIN;
@@ -149,15 +157,20 @@ static __inline void PIN_SWDIO_OUT (uint32_t bit)
 
 static __inline void     PIN_SWDIO_OUT_ENABLE  (void)
 {
-
-	uint32_t moder = GPIO_MODER(SWDIO_GPIO_PORT);
+    uint32_t moder = GPIO_MODER(SWDIO_GPIO_PORT);
     moder &= ~GPIO_MODE_MASK(SWDIO_GPIO_PIN_NUM);
     moder |= GPIO_MODE(SWDIO_GPIO_PIN_NUM, GPIO_MODE_OUTPUT);
 	GPIO_MODER(SWDIO_GPIO_PORT) = moder;
+#if defined(SWDIO_DIR_GPIO_PORT) && defined(SWDIO_DIR_GPIO_PIN)
+    GPIO_BSRR(SWDIO_DIR_GPIO_PORT) = SWDIO_DIR_GPIO_PIN;
+#endif
 }
 
 static __inline void     PIN_SWDIO_OUT_DISABLE (void)
 {
+#if defined(SWDIO_DIR_GPIO_PORT) && defined(SWDIO_DIR_GPIO_PIN)
+    GPIO_BRR(SWDIO_DIR_GPIO_PORT) = SWDIO_DIR_GPIO_PIN;
+#endif
 	uint32_t moder = GPIO_MODER(SWDIO_GPIO_PORT);
     moder &= ~GPIO_MODE_MASK(SWDIO_GPIO_PIN_NUM);
     moder |= GPIO_MODE(SWDIO_GPIO_PIN_NUM, GPIO_MODE_INPUT);
@@ -247,6 +260,7 @@ static __inline void PIN_nRESET_OUT (uint32_t bit) {
 }
 
 static __inline void LED_CONNECTED_OUT (uint32_t bit) {
+    (void)bit;
 #if defined(LED_CON_GPIO_PORT) && defined(LED_CON_GPIO_PIN)
     if ((bit & 0x1) ^ LED_OPEN_DRAIN) {
         gpio_set(LED_CON_GPIO_PORT, LED_CON_GPIO_PIN);
@@ -257,6 +271,7 @@ static __inline void LED_CONNECTED_OUT (uint32_t bit) {
 }
 
 static __inline void LED_RUNNING_OUT (uint32_t bit) {
+    (void)bit;
 #if defined(LED_RUN_GPIO_PORT) && defined(LED_RUN_GPIO_PIN)
     if ((bit & 0x1) ^ LED_OPEN_DRAIN) {
         gpio_set(LED_RUN_GPIO_PORT, LED_RUN_GPIO_PIN);
@@ -267,6 +282,7 @@ static __inline void LED_RUNNING_OUT (uint32_t bit) {
 }
 
 static __inline void LED_ACTIVITY_OUT (uint32_t bit) {
+    (void)bit;
 #if defined(LED_ACT_GPIO_PORT) && defined(LED_ACT_GPIO_PIN)
     if ((bit & 0x1) ^ LED_OPEN_DRAIN) {
         gpio_set(LED_ACT_GPIO_PORT, LED_ACT_GPIO_PIN);

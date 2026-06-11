@@ -181,12 +181,8 @@ static inline uint8_t DAP_GetProductString (char *str) {
 #define JTDO_GPIO_PORT          GPIOB
 #define JTDO_GPIO_PIN           GPIO7
 
-#define LED_CON_GPIO_PORT       GPIOA
-#define LED_CON_GPIO_PIN        GPIO0
-#define LED_RUN_GPIO_PORT       GPIOA
-#define LED_RUN_GPIO_PIN        GPIO1
-#define LED_ACT_GPIO_PORT       GPIOA
-#define LED_ACT_GPIO_PIN        GPIO4
+#define SWDIO_DIR_GPIO_PORT     GPIOA
+#define SWDIO_DIR_GPIO_PIN      GPIO4
 
 #define SWDIO_GPIO_PIN_NUM      5
 
