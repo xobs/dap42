@@ -20,6 +20,8 @@
 #include <libopencm3/usb/cdc.h>
 #include "composite_usb_conf.h"
 #include "vcdc.h"
+#include "wifi_uart.h"
+#include "target.h"
 #include "config.h"
 
 #if VCDC_AVAILABLE
@@ -164,20 +166,47 @@ vcdc_control_class_request(usbd_device *usbd_dev,
              * even though it's optional in the CDC spec, and we don't
              * advertise it in the ACM functional descriptor.
              */
+            bool dtr = (req->wValue & (1 << 0)) != 0;
+            bool rts = (req->wValue & (1 << 1)) != 0;
+
+            /* Boards can route these somewhere. On one801 they gate the
+             * Wi-Fi module whose UART this port carries, which is what lets
+             * a host put it into download mode over this same port. */
+            target_set_control_lines(dtr, rts);
 
             status = USBD_REQ_HANDLED;
             break;
         }
         case USB_CDC_REQ_SET_LINE_CODING: {
+#if WIFI_UART_AVAILABLE
+            /* This port has a real UART behind it, so the requested rate is
+             * programmed rather than merely accepted. Refused if the divisor
+             * cannot represent it, so the host can fall back instead of
+             * believing a setting took. */
+            struct usb_cdc_line_coding *coding;
+            coding = (struct usb_cdc_line_coding*)(*buf);
+            if (*len < sizeof(struct usb_cdc_line_coding)) {
+                status = USBD_REQ_NOTSUPP;
+            } else if (!wifi_uart_set_baudrate(coding->dwDTERate)) {
+                status = USBD_REQ_NOTSUPP;
+            } else {
+                status = USBD_REQ_HANDLED;
+            }
+#else
             /* Accept whatever is requested */
             status = USBD_REQ_HANDLED;
+#endif
             break;
         }
         case USB_CDC_REQ_GET_LINE_CODING: {
             /* Send back a dummy default coding */
             struct usb_cdc_line_coding *coding;
             coding = (struct usb_cdc_line_coding*)(*buf);
+#if WIFI_UART_AVAILABLE
+            coding->dwDTERate = wifi_uart_get_baudrate();
+#else
             coding->dwDTERate = DEFAULT_BAUDRATE;
+#endif
             coding->bCharFormat = USB_CDC_1_STOP_BITS;
             coding->bParityType = USB_CDC_NO_PARITY;
             coding->bDataBits = 8;

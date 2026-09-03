@@ -303,6 +303,10 @@ void cdc_uart_app_reset(void) {
 }
 
 static void set_control_line_state(bool dtr, bool rts) {
+    /* Deliberately ignored. On boards that route the modem-control lines
+     * somewhere, they belong to whichever port carries that device's UART --
+     * on one801 that is the second CDC, not this one. Acting on them here
+     * would have opening the console reset the Wi-Fi module. */
     (void)dtr;
     (void)rts;
     console_rx_buffer_clear();

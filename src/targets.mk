@@ -56,6 +56,12 @@ ifeq ($(TARGET),TINYDYNE)
 	LDSCRIPT           ?= ./stm32f042/stm32f042x6.ld
 	ARCH                = STM32F0
 endif
+ifeq ($(TARGET),ONE801)
+	TARGET_COMMON_DIR  := ./stm32f042
+	TARGET_SPEC_DIR    := ./stm32f042/one801
+	LDSCRIPT           ?= ./stm32f042/stm32f042x6.ld
+	ARCH                = STM32F0
+endif
 ifeq ($(TARGET),NANODYNE)
 	TARGET_COMMON_DIR  := ./stm32f042
 	TARGET_SPEC_DIR    := ./stm32f042/nanodyne

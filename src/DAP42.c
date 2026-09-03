@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "target.h"
+#include "wifi_uart.h"
 
 #include "USB/composite_usb_conf.h"
 #include "USB/cdc.h"
@@ -78,6 +79,12 @@ void USB_IRQ_NAME(void) {
     usbd_poll(usbd_dev);
 }
 
+/* Boards that route the CDC modem-control lines somewhere override this. */
+__attribute__((weak)) void target_set_control_lines(bool dtr, bool rts) {
+    (void)dtr;
+    (void)rts;
+}
+
 int main(void) {
     if (DFU_AVAILABLE) {
         DFU_maybe_jump_to_bootloader();
@@ -92,6 +99,12 @@ int main(void) {
     if (CDC_AVAILABLE) {
         console_setup(DEFAULT_BAUDRATE);
     }
+
+#if WIFI_UART_AVAILABLE
+    /* The second UART, bridged to the second CDC. Brought up unconditionally
+     * rather than behind CDC_AVAILABLE: it belongs to a different port. */
+    wifi_uart_setup();
+#endif
 
     if (SEMIHOSTING) {
         initialise_monitor_handles();
@@ -160,6 +173,10 @@ int main(void) {
         if (VCDC_AVAILABLE) {
             vcdc_app_update();
         }
+
+#if WIFI_UART_AVAILABLE
+        wifi_uart_update();
+#endif
 
 
         // Handle DAP

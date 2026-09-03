@@ -31,7 +31,8 @@ all: DAP42.bin DAP42DC.bin KITCHEN42.bin \
      DAP103-HID-BLUEPILL.bin DAP103-HID-BLUEPILL-DFU.bin \
      DAP103-NUCLEO.bin DAP103-NUCLEO-STBOOT.bin \
      BRAINv3.3.bin \
-     DAP42K6U.bin TINYDYNE.bin NANODYNE.bin FRDM-IMX93.bin
+     DAP42K6U.bin TINYDYNE.bin NANODYNE.bin FRDM-IMX93.bin \
+     ONE801.bin
 clean:
 	$(Q)$(RM) $(BUILD_DIR)/*.bin
 	$(Q)$(RM) -r $(BUILD_DIR)/obj
@@ -69,6 +70,9 @@ DAP42DC.bin: | $(BUILD_DIR)
 
 TINYDYNE.bin: | $(BUILD_DIR)
 	$(call build_firmware,TINYDYNE,$(@))
+
+ONE801.bin: | $(BUILD_DIR)
+	$(call build_firmware,ONE801,$(@))
 
 NANODYNE.bin: | $(BUILD_DIR)
 	$(call build_firmware,NANODYNE,$(@))

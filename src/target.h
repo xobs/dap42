@@ -19,10 +19,21 @@
 #ifndef TARGET_H_INCLUDED
 #define TARGET_H_INCLUDED
 
+#include <stdbool.h>
+#include <stdint.h>
+
 extern void cpu_setup(void);
 extern void clock_setup(void);
 extern void gpio_setup(void);
 extern void target_console_init(void);
+
+/* Applies the CDC modem-control lines to whatever the board wires them to.
+ *
+ * Weakly defined as a no-op, so only boards that route these lines somewhere
+ * need an implementation. `dtr` and `rts` are the logical states the host
+ * asked for, not pin levels: a board inverts if its hardware does.
+ */
+extern void target_set_control_lines(bool dtr, bool rts);
 extern void led_num(uint8_t value);
 extern void led_bit(uint8_t position, bool state);
 

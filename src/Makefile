@@ -57,15 +57,15 @@ endif
 %.dfuse-flash: %.bin
 	$(DFU_UTIL) -d $(APP_VID_PID),$(DFUSE_VID_PID) $(DFU_FLAGS) -a 0 -s 0x08000000:leave -D $(<)
 
-dfuse-flash: $(BINARY).dfuse-flash
+dfuse-flash: $(OBJPREFIX)$(BINARY).dfuse-flash
 
-dfu-flash: $(BINARY).dfu-flash
+dfu-flash: $(OBJPREFIX)$(BINARY).dfu-flash
 
-size: $(OBJS) $(BINARY).elf
-	@$(PREFIX)size $(OBJS) $(BINARY).elf
+size: $(OBJS) $(OBJPREFIX)$(BINARY).elf
+	@$(PREFIX)size $(OBJS) $(OBJPREFIX)$(BINARY).elf
 
-debug: $(BINARY).elf
-	-$(GDB) --tui --eval "target remote | $(OOCD) -f $(OOCD_INTERFACE) -f $(OOCD_BOARD) -f ../openocd/debug.cfg" $(BINARY).elf
+debug: $(OBJPREFIX)$(BINARY).elf
+	-$(GDB) --tui --eval "target remote | $(OOCD) -f $(OOCD_INTERFACE) -f $(OOCD_BOARD) -f ../openocd/debug.cfg" $(OBJPREFIX)$(BINARY).elf
 
 reset:
 	$(OOCD) -f $(OOCD_INTERFACE) -f $(OOCD_BOARD) -c "init; reset halt; reset; shutdown"
