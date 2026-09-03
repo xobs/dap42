@@ -231,6 +231,10 @@ static struct usb_cdc_line_coding current_line_coding = {
 void cdc_uart_app_reset(void);
 
 static bool cdc_uart_set_line_coding(const struct usb_cdc_line_coding* line_coding) {
+    if (!console_baudrate_supported(line_coding->dwDTERate)) {
+        return false;
+    }
+
     uint32_t databits;
     if (line_coding->bDataBits == 7 || line_coding->bDataBits == 8) {
         databits = line_coding->bDataBits;

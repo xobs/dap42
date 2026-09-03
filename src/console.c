@@ -62,6 +62,13 @@ static volatile uint16_t console_tx_tail = 0;
 static volatile uint16_t console_rx_head = 0;
 static volatile uint16_t console_rx_tail = 0;
 
+// Ensure the baudrate gives us a clock divisor between 65535 and
+// 16, to ensure it can still work with 16x oversampling.
+bool console_baudrate_supported(uint32_t baudrate) {
+    const uint32_t clock = rcc_get_usart_clk_freq(CONSOLE_USART);
+    return (baudrate >= (clock / 65535U)) && (baudrate <= (clock / 16U));
+}
+
 void console_reconfigure(uint32_t baudrate, uint32_t databits, uint32_t stopbits,
                          uint32_t parity) {
     // Disable the UART and clear buffers
@@ -148,6 +155,34 @@ uint8_t console_recv_blocking(void) {
     return usart_recv_blocking(CONSOLE_USART);
 }
 
+/* Clears the receive error flags.
+ *
+ * Necessary rather than cosmetic: once ORE latches, the peripheral stops
+ * presenting new data until it is cleared, so an overrun that nothing clears
+ * takes the receive path down for good rather than costing a few bytes.
+ *
+ * How to clear it depends on the peripheral generation, which is why this is
+ * not written inline. The v2 USART on the F0 parts has a dedicated clear
+ * register; the v1 USART on the F1 parts has no ICR at all, and instead drops
+ * the flags when the status register is read and then the data register.
+ */
+static void console_clear_rx_errors(void) {
+#if defined(USART_ICR)
+    USART_ICR(CONSOLE_USART) = USART_ICR_ORECF | USART_ICR_NCF
+                             | USART_ICR_FECF | USART_ICR_PECF;
+#else
+    if (usart_get_flag(CONSOLE_USART, USART_SR_ORE)
+        || usart_get_flag(CONSOLE_USART, USART_SR_NE)
+        || usart_get_flag(CONSOLE_USART, USART_SR_FE)
+        || usart_get_flag(CONSOLE_USART, USART_SR_PE)) {
+        /* Reading the data register is part of the documented clear sequence
+         * on this generation. */
+        (void)USART_SR(CONSOLE_USART);
+        (void)USART_DR(CONSOLE_USART);
+    }
+#endif
+}
+
 void CONSOLE_USART_IRQ_NAME(void) {
     if (usart_get_flag(CONSOLE_USART, USART_FLAG_TXE)) {
         if (!console_tx_buffer_empty()) {
@@ -165,4 +200,6 @@ void CONSOLE_USART_IRQ_NAME(void) {
         }
         console_rx_head = cdc_start_in_transfer(console_rx_buffer, console_rx_head, console_rx_tail);
     }
+
+    console_clear_rx_errors();
 }

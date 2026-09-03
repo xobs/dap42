@@ -19,12 +19,15 @@
 #ifndef CONSOLE_H_INCLUDED
 #define CONSOLE_H_INCLUDED
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <libopencm3/stm32/usart.h>
 
 #include "config.h"
 
 extern void console_setup(uint32_t baudrate);
+/* True if the USART can actually be programmed to `baudrate`. */
+extern bool console_baudrate_supported(uint32_t baudrate);
 extern void console_reconfigure(uint32_t baudrate, uint32_t databits,
                                 uint32_t stopbits, uint32_t parity);
 
