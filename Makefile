@@ -34,117 +34,83 @@ all: DAP42.bin DAP42DC.bin KITCHEN42.bin \
      DAP42K6U.bin TINYDYNE.bin NANODYNE.bin FRDM-IMX93.bin
 clean:
 	$(Q)$(RM) $(BUILD_DIR)/*.bin
+	$(Q)$(RM) -r $(BUILD_DIR)/obj
 	$(Q)$(MAKE) -C src/ clean
 
-.PHONY = all clean
+# `.PHONY` is a special target, not a variable: with `=` this defined a
+# variable of that name and marked nothing phony, so `all` and `clean` would
+# have been skipped had files of those names ever existed.
+.PHONY: all clean
+
+# Each target builds into its own directory under `$(BUILD_DIR)/obj`, so
+# several can run at once. They all compile the same source paths to the same
+# object names, so when they shared `src/` one target's `clean` deleted
+# another's objects mid-compile and both raced to write `src/DAP42.bin` --
+# `make -j` produced corrupt or failed builds rather than faster ones.
+#
+# Separate directories also make the per-target `clean` unnecessary, so an
+# incremental rebuild now only recompiles what changed.
+#
+# $(1) is the value of TARGET, $(2) the output name.
+define build_firmware
+	@printf "  BUILD $(2)\n"
+	$(Q)$(MAKE) TARGET=$(1) OBJDIR=$(CURDIR)/$(BUILD_DIR)/obj/$(basename $(2)) -C src/
+	$(Q)cp $(BUILD_DIR)/obj/$(basename $(2))/DAP42.bin $(BUILD_DIR)/$(2)
+endef
 
 $(BUILD_DIR):
 	$(Q)mkdir -p $(BUILD_DIR)
 
 DAP42.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F042 -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F042 -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F042,$(@))
 
 DAP42DC.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=DAP42DC -C src/ clean
-	$(Q)$(MAKE) TARGET=DAP42DC -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,DAP42DC,$(@))
 
 TINYDYNE.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=TINYDYNE -C src/ clean
-	$(Q)$(MAKE) TARGET=TINYDYNE -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,TINYDYNE,$(@))
 
 NANODYNE.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=NANODYNE -C src/ clean
-	$(Q)$(MAKE) TARGET=NANODYNE -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,NANODYNE,$(@))
 
 FRDM-IMX93.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=FRDM-IMX93 -C src/ clean
-	$(Q)$(MAKE) TARGET=FRDM-IMX93 -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,FRDM-IMX93,$(@))
 
 KITCHEN42.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=KITCHEN42 -C src/ clean
-	$(Q)$(MAKE) TARGET=KITCHEN42 -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,KITCHEN42,$(@))
 
 DAP103.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F103 -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F103 -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F103,$(@))
 
 DAP103-DFU.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F103-DFUBOOT -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F103-DFUBOOT -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F103-DFUBOOT,$(@))
 
 DAP103-BLUEPILL.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F103-BLUEPILL -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F103-BLUEPILL -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F103-BLUEPILL,$(@))
 
 DAP103-BLUEPILL-DFU.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F103-BLUEPILL-DFUBOOT -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F103-BLUEPILL-DFUBOOT -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F103-BLUEPILL-DFUBOOT,$(@))
 
 DAP103-HID.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F103-HID -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F103-HID -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F103-HID,$(@))
 
 DAP103-HID-DFU.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F103-HID-DFUBOOT -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F103-HID-DFUBOOT -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F103-HID-DFUBOOT,$(@))
 
 DAP103-HID-BLUEPILL.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F103-HID-BLUEPILL -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F103-HID-BLUEPILL -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F103-HID-BLUEPILL,$(@))
 
 DAP103-HID-BLUEPILL-DFU.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STM32F103-HID-BLUEPILL-DFUBOOT -C src/ clean
-	$(Q)$(MAKE) TARGET=STM32F103-HID-BLUEPILL-DFUBOOT -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STM32F103-HID-BLUEPILL-DFUBOOT,$(@))
 
 BRAINv3.3.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=BRAINV3.3 -C src/ clean
-	$(Q)$(MAKE) TARGET=BRAINV3.3 -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,BRAINV3.3,$(@))
 
 DAP42K6U.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=DAP42K6U -C src/ clean
-	$(Q)$(MAKE) TARGET=DAP42K6U -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,DAP42K6U,$(@))
 
 DAP103-NUCLEO.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STLINKV2-1 -C src/ clean
-	$(Q)$(MAKE) TARGET=STLINKV2-1 -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STLINKV2-1,$(@))
 
 DAP103-NUCLEO-STBOOT.bin: | $(BUILD_DIR)
-	@printf "  BUILD $(@)\n"
-	$(Q)$(MAKE) TARGET=STLINKV2-1-STBOOT -C src/ clean
-	$(Q)$(MAKE) TARGET=STLINKV2-1-STBOOT -C src/
-	$(Q)cp src/DAP42.bin $(BUILD_DIR)/$(@)
+	$(call build_firmware,STLINKV2-1-STBOOT,$(@))

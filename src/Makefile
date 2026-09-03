@@ -27,7 +27,19 @@ DFUSE_VID_PID  := 0483:df11
 DAP42_VID_PID  := 1209:da42
 DFU_VID_PID    ?= $(DFUSE_VID_PID)
 APP_VID_PID    ?= $(DAP42_VID_PID)
-.DEFAULT_GOAL  := $(BINARY).bin
+# Where objects and the linked output go.
+#
+# Unset, everything lands beside the sources exactly as it always has, so a
+# bare `make -C src/` is unchanged. Set, each caller gets its own tree, which
+# is what lets the top-level Makefile build several targets at once: they all
+# compile the same source paths to the same object names, so sharing one
+# directory means one target's output overwrites another's.
+OBJDIR         ?=
+ifneq ($(OBJDIR),)
+OBJPREFIX      := $(OBJDIR)/
+endif
+
+.DEFAULT_GOAL  := $(OBJPREFIX)$(BINARY).bin
 
 ifeq ($(ARCH),STM32F0)
 	DFUSE_SERIAL := FFFFFFFEFFFF
@@ -76,8 +88,8 @@ SRCS           += $(wildcard $(TARGET_SPEC_DIR)/DAP/*.c)
 SRCS           += $(wildcard $(TARGET_SPEC_DIR)/USB/*.c)
 SRCS           += $(wildcard $(TARGET_SPEC_DIR)/DFU/*.c)
 
-OBJS           += $(SRCS:.c=.o)
-DEPS            = $(SRCS:.c=.d)
+OBJS           += $(addprefix $(OBJPREFIX),$(SRCS:.c=.o))
+DEPS            = $(OBJS:.o=.d)
 
 include rules.mk
 
@@ -89,5 +101,15 @@ CPPFLAGS       += -I.
 # Add target config directory to the header search path
 CPPFLAGS       += -I$(TARGET_COMMON_DIR)/
 CPPFLAGS       += -I$(TARGET_SPEC_DIR)/
+
+ifneq ($(OBJDIR),)
+# Preferred over rules.mk's `%.o: %.c` for these paths: that one would look for
+# a source inside OBJDIR, which does not exist, so this is the only rule whose
+# prerequisite can be found. `-MD` puts the dependency file beside the object,
+# so DEPS follows OBJDIR without further work.
+$(OBJDIR)/%.o: %.c $(LIB_DIR)/lib$(LIBNAME).a
+	$(Q)mkdir -p $(dir $(@))
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) $(ARCH_FLAGS) -o $(@) -c $(<)
+endif
 
 .PHONY         += debug size dfuse-flash dfu-flash reset
