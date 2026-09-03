@@ -350,6 +350,11 @@ uint32_t cdc_start_in_transfer(const uint8_t *const packet_buffer, uint32_t tail
 bool cdc_uart_app_update() {
     bool active = false;
 
+    // Ship whatever the receive DMA has collected since the last poll.
+    if (console_rx_drain()) {
+        active = true;
+    }
+
     // Handle flow control for data received from the host
     if (cdc_get_nak()) {
         if (console_send_buffer_space() >= USB_CDC_MAX_PACKET_SIZE) {

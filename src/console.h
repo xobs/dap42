@@ -26,6 +26,13 @@
 #include "config.h"
 
 extern void console_setup(uint32_t baudrate);
+/* Ships anything the receive DMA has collected to the USB host.
+ *
+ * Returns true if it moved data. Called from the main loop rather than an
+ * interrupt: there is no receive interrupt with DMA, and the buffer can be
+ * inspected whenever convenient. */
+extern bool console_rx_drain(void);
+
 /* True if the USART can actually be programmed to `baudrate`. */
 extern bool console_baudrate_supported(uint32_t baudrate);
 extern void console_reconfigure(uint32_t baudrate, uint32_t databits,

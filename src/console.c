@@ -25,6 +25,10 @@
 #include "target.h"
 #include "USB/cdc.h"
 
+/* Defined below, but needed by `console_setup` above them. */
+static void console_rx_dma_start(void);
+static void console_rx_dma_stop(void);
+
 void console_setup(uint32_t baudrate) {
     /* Setup GPIO */
     target_console_init();
@@ -41,6 +45,7 @@ void console_setup(uint32_t baudrate) {
     usart_enable(CONSOLE_USART);
     nvic_enable_irq(CONSOLE_USART_NVIC_LINE);
     rcc_periph_clock_enable(CONSOLE_RX_DMA_CLOCK);
+    console_rx_dma_start();
 }
 
 void console_tx_buffer_clear(void);
@@ -60,10 +65,105 @@ static volatile uint16_t console_tx_head = 0;
 static volatile uint16_t console_tx_tail = 0;
 
 static volatile uint16_t console_rx_head = 0;
-static volatile uint16_t console_rx_tail = 0;
 
 // Ensure the baudrate gives us a clock divisor between 65535 and
 // 16, to ensure it can still work with 16x oversampling.
+/* Circular DMA receive.
+ *
+ * Reading a byte per interrupt cannot keep up at high line rates: at 2 Mbit
+ * that is 200k interrupts a second, around 240 cycles each at 48 MHz, and the
+ * handler also has to start a USB transfer. Falling behind means the
+ * peripheral drops bytes. Circular DMA moves the copy into hardware and lets
+ * software look at the buffer whenever it gets round to it, so the line rate
+ * stops being a function of how promptly interrupts are serviced.
+ *
+ * There is no receive interrupt at all as a result. The write pointer is not
+ * tracked in software either: it is derived from the channel's remaining-count
+ * register, which the DMA decrements as it fills the buffer. The read pointer
+ * stays in `console_rx_head`, advanced by whoever drains to USB.
+ */
+static void console_rx_dma_start(void) {
+    dma_channel_reset(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
+    dma_set_peripheral_address(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL,
+                               (uint32_t)&USART_RDR(CONSOLE_USART));
+    dma_set_memory_address(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL,
+                           (uint32_t)console_rx_buffer);
+    dma_set_number_of_data(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL,
+                           CONSOLE_RX_BUFFER_SIZE);
+    dma_set_read_from_peripheral(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
+    dma_set_peripheral_size(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL,
+                            DMA_CCR_PSIZE_8BIT);
+    dma_set_memory_size(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL,
+                        DMA_CCR_MSIZE_8BIT);
+    dma_enable_memory_increment_mode(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
+    dma_enable_circular_mode(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
+    /* Ahead of the USB stack's own traffic: a missed byte here cannot be
+     * recovered, whereas USB retries. */
+    dma_set_priority(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL,
+                     DMA_CCR_PL_HIGH);
+
+    dma_enable_channel(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
+    usart_enable_rx_dma(CONSOLE_USART);
+}
+
+static void console_rx_dma_stop(void) {
+    usart_disable_rx_dma(CONSOLE_USART);
+    dma_disable_channel(CONSOLE_RX_DMA_CONTROLLER, CONSOLE_RX_DMA_CHANNEL);
+}
+
+/* Where the DMA has written up to, as an index into the buffer.
+ *
+ * The count reads as the full buffer size for the instant after a wrap, which
+ * the mask folds back to zero -- the same position, since the buffer is a
+ * power of two.
+ */
+static uint16_t console_rx_dma_tail(void) {
+    uint16_t remaining = dma_get_number_of_data(CONSOLE_RX_DMA_CONTROLLER,
+                                                CONSOLE_RX_DMA_CHANNEL);
+    return (uint16_t)(CONSOLE_RX_BUFFER_SIZE - remaining) & (CONSOLE_RX_BUFFER_SIZE - 1);
+}
+
+/* Clears the receive error flags.
+ *
+ * Necessary rather than cosmetic: once ORE latches, the peripheral stops
+ * presenting new data until it is cleared, so an overrun that nothing clears
+ * takes the receive path down for good rather than costing a few bytes.
+ *
+ * How to clear it depends on the peripheral generation, which is why this is
+ * not written inline. The v2 USART on the F0 parts has a dedicated clear
+ * register; the v1 USART on the F1 parts has no ICR at all, and instead drops
+ * the flags when the status register is read and then the data register.
+ */
+static void console_clear_rx_errors(void) {
+#if defined(USART_ICR)
+    USART_ICR(CONSOLE_USART) = USART_ICR_ORECF | USART_ICR_NCF
+                             | USART_ICR_FECF | USART_ICR_PECF;
+#else
+    if (usart_get_flag(CONSOLE_USART, USART_SR_ORE)
+        || usart_get_flag(CONSOLE_USART, USART_SR_NE)
+        || usart_get_flag(CONSOLE_USART, USART_SR_FE)
+        || usart_get_flag(CONSOLE_USART, USART_SR_PE)) {
+        /* Reading the data register is part of the documented clear sequence
+         * on this generation. */
+        (void)USART_SR(CONSOLE_USART);
+        (void)USART_DR(CONSOLE_USART);
+    }
+#endif
+}
+
+bool console_rx_drain(void) {
+    /* The interrupt handler only runs for TX now, so with DMA driving receive
+     * this is the only path that reaches the error flags. */
+    console_clear_rx_errors();
+
+    uint16_t tail = console_rx_dma_tail();
+    if (tail == console_rx_head) {
+        return false;
+    }
+    console_rx_head = cdc_start_in_transfer(console_rx_buffer, console_rx_head, tail);
+    return true;
+}
+
 bool console_baudrate_supported(uint32_t baudrate) {
     const uint32_t clock = rcc_get_usart_clk_freq(CONSOLE_USART);
     return (baudrate >= (clock / 65535U)) && (baudrate <= (clock / 16U));
@@ -74,7 +174,7 @@ void console_reconfigure(uint32_t baudrate, uint32_t databits, uint32_t stopbits
     // Disable the UART and clear buffers
     usart_disable(CONSOLE_USART);
 
-    usart_disable_rx_dma(CONSOLE_USART);
+    console_rx_dma_stop();
     usart_disable_tx_interrupt(CONSOLE_USART);
     nvic_disable_irq(CONSOLE_USART_NVIC_LINE);
 
@@ -91,12 +191,12 @@ void console_reconfigure(uint32_t baudrate, uint32_t databits, uint32_t stopbits
     usart_set_stopbits(CONSOLE_USART, stopbits);
     usart_set_parity(CONSOLE_USART, parity);
     usart_set_mode(CONSOLE_USART, CONSOLE_USART_MODE);
-    usart_enable_rx_interrupt(CONSOLE_USART);
 
     nvic_enable_irq(CONSOLE_USART_NVIC_LINE);
 
     // Re-enable the UART with the new settings
     usart_enable(CONSOLE_USART);
+    console_rx_dma_start();
 }
 
 static bool console_tx_buffer_empty(void) {
@@ -128,8 +228,12 @@ size_t console_send_buffer_space(void) {
 }
 
 void console_rx_buffer_clear(void) {
+    /* Restarted rather than just zeroed: the write pointer lives in the DMA
+     * channel's count register, so it is only actually at the start of the
+     * buffer once the channel has been reloaded. */
+    console_rx_dma_stop();
     console_rx_head = 0;
-    console_rx_tail = 0;
+    console_rx_dma_start();
 }
 
 size_t console_send_buffered(const uint8_t* data, size_t num_bytes) {
@@ -155,33 +259,6 @@ uint8_t console_recv_blocking(void) {
     return usart_recv_blocking(CONSOLE_USART);
 }
 
-/* Clears the receive error flags.
- *
- * Necessary rather than cosmetic: once ORE latches, the peripheral stops
- * presenting new data until it is cleared, so an overrun that nothing clears
- * takes the receive path down for good rather than costing a few bytes.
- *
- * How to clear it depends on the peripheral generation, which is why this is
- * not written inline. The v2 USART on the F0 parts has a dedicated clear
- * register; the v1 USART on the F1 parts has no ICR at all, and instead drops
- * the flags when the status register is read and then the data register.
- */
-static void console_clear_rx_errors(void) {
-#if defined(USART_ICR)
-    USART_ICR(CONSOLE_USART) = USART_ICR_ORECF | USART_ICR_NCF
-                             | USART_ICR_FECF | USART_ICR_PECF;
-#else
-    if (usart_get_flag(CONSOLE_USART, USART_SR_ORE)
-        || usart_get_flag(CONSOLE_USART, USART_SR_NE)
-        || usart_get_flag(CONSOLE_USART, USART_SR_FE)
-        || usart_get_flag(CONSOLE_USART, USART_SR_PE)) {
-        /* Reading the data register is part of the documented clear sequence
-         * on this generation. */
-        (void)USART_SR(CONSOLE_USART);
-        (void)USART_DR(CONSOLE_USART);
-    }
-#endif
-}
 
 void CONSOLE_USART_IRQ_NAME(void) {
     if (usart_get_flag(CONSOLE_USART, USART_FLAG_TXE)) {
@@ -193,13 +270,9 @@ void CONSOLE_USART_IRQ_NAME(void) {
         }
     }
 
-    if (usart_get_flag(CONSOLE_USART, USART_FLAG_RXNE)) {
-        while (usart_get_flag(CONSOLE_USART, USART_FLAG_RXNE)) {
-            console_rx_buffer[console_rx_tail++] = usart_recv(CONSOLE_USART);
-            console_rx_tail &= (CONSOLE_RX_BUFFER_SIZE-1);
-        }
-        console_rx_head = cdc_start_in_transfer(console_rx_buffer, console_rx_head, console_rx_tail);
-    }
+    /* No receive handling here: the DMA takes bytes straight out of RDR and
+     * `console_rx_drain` ships them from the main loop.
+     */
 
     console_clear_rx_errors();
 }
